@@ -9,19 +9,9 @@ interface TodoItemProps {
 function TodoItem({ todo }: TodoItemProps) {
   const { deleteTodo, toggleTodo, editTodo } = useTodo();
   const [isEditing, setIsEditing] = React.useState(false);
-  const [title, setTitle] = React.useState<String>("");
 
-  const handleToggle = () => {
+  const handleToggle = () => {  
     setIsEditing(true);
-  };
-
-  const handleEdit = () => {
-    if (title.trim() !== "") {
-      editTodo(todo.id, title.trim());
-      setIsEditing(false);
-    } else {
-      setIsEditing(false);
-    }
   };
 
   return (
@@ -35,7 +25,6 @@ function TodoItem({ todo }: TodoItemProps) {
               if (e.target.value.trim() !== "") {
                 editTodo(todo.id, e.target.value.trim());
               }
-              setIsEditing(false);
             }}
             className="border border-gray-300 rounded px-2 py-1 w-full"
           />
@@ -68,7 +57,7 @@ function TodoItem({ todo }: TodoItemProps) {
           </button>
         ) : (
           <button
-            onClick={handleEdit}
+            onClick={() => setIsEditing(!isEditing)}
             className="ml-2 text-blue-600 hover:underline"
           >
             Save
