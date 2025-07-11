@@ -13,6 +13,7 @@ type TodoContextType = {
   editTodo: (id: number, updatedTitle: string) => void;
   toggleTodo: (id: number) => void;
   setFilter: (filter: FilterType) => void;
+  clearAllTodos: () => void;
 };
 
 const TodoContext = React.createContext<TodoContextType | undefined>(undefined);
@@ -28,28 +29,57 @@ function TodoProvider({ children }: { children: React.ReactNode }) {
     return true; 
   });
 
+  const saveTodosToLocalStorage = (todosData: Todo[]) => {
+    try {
+      localStorage.setItem('todos', JSON.stringify(todosData));
+    } catch (err) {
+      console.error('Failed to save todos to localStorage:', err);
+    }
+  };
+
+  const loadTodosFromLocalStorage = (): Todo[] => {
+    try {
+      const savedTodos = localStorage.getItem('todos');
+      return savedTodos ? JSON.parse(savedTodos) : [];
+    } catch (err) {
+      console.error('Failed to load todos from localStorage:', err);
+      return [];
+    }
+  };
+
   useEffect(() => {
-    const fetchTodos = async () => {
+    const initializeTodos = async () => {
       try {
-        const response = await fetch(
-          "https://jsonplaceholder.typicode.com/todos"
-        );
-        if (!response.ok) {
-          throw new Error("Failed to fetch todos");
+        const savedTodos = loadTodosFromLocalStorage();
+        
+        if (savedTodos.length > 0) {
+          setTodos(savedTodos);
+          setError(null);
+        } else {
+          const response = await fetch(
+            "https://jsonplaceholder.typicode.com/todos"
+          );
+          if (!response.ok) {
+            throw new Error("Failed to fetch todos");
+          }
+          const data: Todo[] = await response.json();
+          const initialTodos = data.slice(0, 8);
+          setTodos(initialTodos);
+          saveTodosToLocalStorage(initialTodos);
         }
-        const data: Todo[] = await response.json();
-        setTodos(data.slice(0, 8)); 
       } catch (err) {
         setError(err instanceof Error ? err.message : "An error occurred");
       }
     };
 
-    fetchTodos();
+    initializeTodos();
   }, []);
 
   const addTodo = (todo: Todo) => {
     try {
-      setTodos((prev) => [ todo,...prev]);
+      const newTodos = [todo, ...todos];
+      setTodos(newTodos);
+      saveTodosToLocalStorage(newTodos);
       setError(null);
     } catch (err) {
       setError("Failed to add todo");
@@ -58,7 +88,9 @@ function TodoProvider({ children }: { children: React.ReactNode }) {
 
   const deleteTodo = (id: number) => {
     try {
-      setTodos((prev) => prev.filter((todo) => todo.id !== id));
+      const newTodos = todos.filter((todo) => todo.id !== id);
+      setTodos(newTodos);
+      saveTodosToLocalStorage(newTodos);
       setError(null);
     } catch (err) {
       setError("Failed to delete todo");
@@ -67,11 +99,11 @@ function TodoProvider({ children }: { children: React.ReactNode }) {
 
   const toggleTodo = (id: number) => {
     try {
-      setTodos((prev) =>
-        prev.map((todo) =>
-          todo.id === id ? { ...todo, completed: !todo.completed } : todo
-        )
+      const newTodos = todos.map((todo) =>
+        todo.id === id ? { ...todo, completed: !todo.completed } : todo
       );
+      setTodos(newTodos);
+      saveTodosToLocalStorage(newTodos);
       setError(null);
     } catch (err) {
       setError("Failed to toggle todo");
@@ -80,16 +112,26 @@ function TodoProvider({ children }: { children: React.ReactNode }) {
 
   const editTodo = (id: number, updatedTitle: string) => {
     try {
-      setTodos((prev) =>
-        prev.map((todo) =>
-          todo.id === id ? { ...todo, title: updatedTitle } : todo
-        )
+      const newTodos = todos.map((todo) =>
+        todo.id === id ? { ...todo, title: updatedTitle } : todo
       );
+      setTodos(newTodos);
+      saveTodosToLocalStorage(newTodos);
       setError(null);
     } catch (err) {
       setError("Failed to edit todo");
     }
   }
+
+  const clearAllTodos = () => {
+    try {
+      setTodos([]);
+      localStorage.removeItem('todos');
+      setError(null);
+    } catch (err) {
+      setError("Failed to clear todos");
+    }
+  };
 
   return (
     <TodoContext.Provider
@@ -103,6 +145,7 @@ function TodoProvider({ children }: { children: React.ReactNode }) {
         deleteTodo,
         toggleTodo,
         setFilter,
+        clearAllTodos,
       }}
     >
       {children}
